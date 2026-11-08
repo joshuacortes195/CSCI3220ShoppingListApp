@@ -1,0 +1,24 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "shoppinglistapp-c9024",
+          "appId": "1:70918304056:android:02de4d6012cccd343fd1cd",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "shoppinglistapp-c9024",
+          "configurations": {
+            "android": "1:70918304056:android:02de4d6012cccd343fd1cd"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "70918304056",
+    "firebase_url": "https://shoppinglistapp-c9024-default-rtdb.firebaseio.com",
+    "project_id": "shoppinglistapp-c9024",
+    "storage_bucket": "shoppinglistapp-c9024.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:70918304056:android:02de4d6012cccd343fd1cd",
+        "android_client_info": {
+          "package_name": "com.example.shopping_list_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-RFE4h4LMYqzo9ro0NUQsmgwjGuUBxYE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
