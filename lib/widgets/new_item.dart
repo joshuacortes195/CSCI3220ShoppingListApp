@@ -1,10 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:shopping_list_app/data/categories.dart';
 import 'package:shopping_list_app/models/category.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shopping_list_app/models/grocery_item.dart';
+import 'package:shopping_list_app/providers/cart_provider.dart';
 
 // screen with the form for adding a new item
 class NewItem extends StatefulWidget {
@@ -23,7 +22,7 @@ class _NewItemState extends State<NewItem> {
   var _selectCategory = categories[Categories.vegetables]!; 
   var _isSending = false; 
 
-  // checks the form and saves the item to firebase
+  // checks the form and saves the item to firestore
   void _saveItem() async {
     // only saves if everything in the form is valid
     if (_formKey.currentState!.validate()) {
@@ -32,40 +31,21 @@ class _NewItemState extends State<NewItem> {
       setState(() {
         _isSending = true;
       });
-      // link to our shopping list in firebase
-      final url = Uri.https(
-          'shoppinglistapp-c9024-default-rtdb.firebaseio.com',
-          'shopping-list.json');
-      // sends the new item to firebase
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json', // tells firebase we're sending json
-        },
-        // the item data we're saving
-        body: json.encode(
-          {
-            'name': _enteredName,
-            'quantity': _enteredQuantity,
-            'category': _selectCategory.title,
-          },
-        ),
-      );
-      final Map<String, dynamic> resData = json.decode(response.body); // firebase sends back the new id
+      // sends the new item to firestore through the cart provider
+      await context.read<CartProvider>().addItem(
+            GroceryItem(
+              id: '', // firestore makes the real id when it saves
+              name: _enteredName,
+              quantity: _enteredQuantity,
+              category: _selectCategory,
+            ),
+          );
 
       // stops if the screen was closed while saving
-      if (!context.mounted) {
+      if (!mounted) {
         return;
       }
-      // closes the screen and sends the new item back to the list
-      Navigator.of(context).pop(
-        GroceryItem(
-          id: resData['name'], // id firebase made for it
-          name: _enteredName,
-          quantity: _enteredQuantity,
-          category: _selectCategory,
-        ),
-      );
+      Navigator.of(context).pop(); // closes the screen, the cart updates by itself
     }
   }
 
