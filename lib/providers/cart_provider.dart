@@ -4,7 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:shopping_list_app/data/history_items.dart';
 import 'package:shopping_list_app/models/grocery_item.dart';
+import 'package:shopping_list_app/models/history_item.dart';
 
 // holds the cart and favorites for every screen and keeps them synced with firestore
 class CartProvider extends ChangeNotifier {
@@ -14,6 +16,7 @@ class CartProvider extends ChangeNotifier {
   }
 
   List<GroceryItem> _items = []; // every item this user has saved
+  List<HistoryItem> _history = []; // items user saved on the phone
   var _isLoading = true; // shows the loading spinner while true
   String? _error; // error message to show if something fails
   StreamSubscription<User?>? _authSub; // watches who is signed in
@@ -29,6 +32,9 @@ class CartProvider extends ChangeNotifier {
   List<GroceryItem> get favorites =>
       _items.where((item) => item.favorite).toList();
 
+  // items that show up on the history tab
+  List<HistoryItem> get history => _history;
+
   // the signed in user's items folder in firestore
   CollectionReference<Map<String, dynamic>> get _itemsRef {
     final uid = FirebaseAuth.instance.currentUser!.uid; // id of whoever is signed in
@@ -42,6 +48,7 @@ class CartProvider extends ChangeNotifier {
   void _onAuthChanged(User? user) {
     _itemsSub?.cancel(); // stops listening to the last user's items
     _items = [];
+    _history = []; // clears the last users history from the screen
     _error = null;
 
     // nobody signed in, so there's nothing to load
@@ -53,6 +60,8 @@ class CartProvider extends ChangeNotifier {
 
     _isLoading = true;
     notifyListeners();
+
+    _loadHistory(user.uid); // loads users history from the phone
 
     // live feed of this user's items, updates on every device right away
     _itemsSub = _itemsRef.orderBy('createdAt').snapshots().listen(
@@ -73,6 +82,17 @@ class CartProvider extends ChangeNotifier {
     );
   }
 
+  // reads users purchase history from the database on the phone
+  Future<void> _loadHistory(String uid) async {
+    final entries = await HistoryItems.instance.getHistory(uid);
+    // ignores the result if a different user signed in while it was loading
+    if (FirebaseAuth.instance.currentUser?.uid != uid) {
+      return;
+    }
+    _history = entries;
+    notifyListeners();
+  }
+
   // saves a new item to the cart in firestore
   Future<void> addItem(GroceryItem item) async {
     await _itemsRef.add(item.toMap());
@@ -80,6 +100,11 @@ class CartProvider extends ChangeNotifier {
 
   // takes an item out of the cart when it gets swiped away
   Future<void> removeFromCart(GroceryItem item) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    // saves the item to the history on the phone before it leaves the cart
+    await HistoryItems.instance.addEntry(uid, item);
+    await _loadHistory(uid);
+
     // keeps favorites around so they stay on the favorites tab
     if (item.favorite) {
       await _itemsRef.doc(item.id).update({'inCart': false});
@@ -88,9 +113,36 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
+  // puts a history item back in the cart as a new item
+  Future<void> addFromHistory(HistoryItem entry) async {
+    await addItem(
+      GroceryItem(
+        id: '', 
+        name: entry.name,
+        quantity: entry.quantity,
+        category: entry.category,
+      ),
+    );
+  }
+
+  // deletes one entry from the history
+  Future<void> deleteHistoryItem(HistoryItem entry) async {
+    // removes it from the screen right away so the swipe animation finishes cleanly
+    _history = _history.where((e) => e.id != entry.id).toList();
+    notifyListeners();
+    await HistoryItems.instance.deleteEntry(entry.id);
+  }
+
+  // deletes the whole history for the signed in user
+  Future<void> clearHistory() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    _history = [];
+    notifyListeners();
+    await HistoryItems.instance.clearHistory(uid);
+  }
+
   // stars or unstars an item
   Future<void> toggleFavorite(GroceryItem item) async {
-    // unstarring something that isn't in the cart means it isn't needed anymore
     if (item.favorite && !item.inCart) {
       await _itemsRef.doc(item.id).delete();
     } else {
